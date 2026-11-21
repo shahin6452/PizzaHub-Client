@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { AuthForm } from "@/components/auth-form";
+export default function SignIn(){return <main className="auth-page"><div className="auth-aside"><div className="auth-aside-content"><span className="section-kicker">GOOD TO SEE YOU AGAIN</span><h1>Your next slice<br/><em>is waiting.</em></h1><p>Sign in to keep track of your orders and discover new neighbourhood favourites.</p><div className="auth-aside-pizza">🍕</div></div></div><div className="auth-panel"><div className="auth-panel-inner"><Link href="/" className="back-link">← Back to PizzaHub</Link><span className="section-kicker">WELCOME BACK</span><h2>Sign in to your account</h2><p className="muted">Pick up where your cravings left off.</p><AuthForm mode="sign-in"/></div></div></main>}

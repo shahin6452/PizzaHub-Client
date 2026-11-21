@@ -1,0 +1,2 @@
+import Link from "next/link";import { ShieldAlert } from "lucide-react";
+export default function BlockedPage(){return <main className="container page-shell"><div className="payment-result"><span className="payment-result-icon cancel"><ShieldAlert/></span><span className="section-kicker">ACCOUNT ACCESS RESTRICTED</span><h1>Let’s sort this <em>out.</em></h1><p>This account is currently blocked from using protected PizzaHub features. Please contact support for help.</p><Link className="btn btn-primary" href="mailto:support@pizzahub.example">Contact support</Link></div></main>}

@@ -1,0 +1,2 @@
+import Link from "next/link";import { Pizza } from "lucide-react";
+export default function NotFound(){return <main className="container page-shell"><div className="payment-result"><span className="payment-result-icon cancel"><Pizza/></span><span className="section-kicker">WRONG TURN, RIGHT CRAVING</span><h1>Page not <em>found.</em></h1><p>The page you’re looking for may have moved. There are plenty of good things on the menu.</p><Link className="btn btn-primary" href="/browse">Explore the menu</Link></div></main>}
