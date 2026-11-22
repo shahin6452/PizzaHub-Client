@@ -17,7 +17,7 @@ export default function AuthComplete() {
     useEffect(() => {
         if (isPending || processed.current) return;
 
-        if (!session) {
+        if (!session?.user) {
             processed.current = true;
             router.replace("/sign-in");
             return;
@@ -44,7 +44,13 @@ export default function AuthComplete() {
                     toast.success("Welcome back! Google login successful.");
                 }
 
-                const user = session.user as typeof session.user & {
+                const currentUser = session?.user;
+
+                if (!currentUser) {
+                    throw new Error("Unable to retrieve your account information.");
+                }
+
+                const user = currentUser as typeof currentUser & {
                     role?: string;
                 };
 
