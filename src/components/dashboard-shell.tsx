@@ -88,13 +88,22 @@ export function DashboardShell({
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const [vendorPlan, setVendorPlan] = useState<string | null>(null);
+  const [sessionVerified, setSessionVerified] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
+  const verificationRef = useRef<string | null>(null);
 
-  const { data: session, isPending } = authClient.useSession();
+  const {
+    data: session,
+    isPending,
+    refetch: refetchSession,
+  } = authClient.useSession();
+
+  const sessionUserId = session?.user?.id;
 
   const user = session?.user as
     | {
+        id?: string;
         name: string;
         email?: string;
         image?: string | null;
@@ -119,9 +128,42 @@ export function DashboardShell({
       ? user?.businessName || user?.name
       : user?.name;
 
-  // Fetch vendor plan to control the Premium promotional card
+  // Verify the latest session before displaying the dashboard.
   useEffect(() => {
-    if (role !== "vendor") {
+    if (isPending) return;
+
+    if (!sessionUserId) {
+      verificationRef.current = null;
+      setSessionVerified(true);
+      return;
+    }
+
+    // Avoid repeating verification for the same signed-in user.
+    if (verificationRef.current === sessionUserId) return;
+
+    verificationRef.current = sessionUserId;
+    let cancelled = false;
+
+    setSessionVerified(false);
+
+    refetchSession()
+      .catch((error) => {
+        console.error("Session refresh failed:", error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSessionVerified(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPending, sessionUserId, refetchSession]);
+
+  // Fetch vendor plan to control the Premium promotional card.
+  useEffect(() => {
+    if (!sessionVerified || role !== "vendor") {
       setVendorPlan(null);
       return;
     }
@@ -143,11 +185,11 @@ export function DashboardShell({
     return () => {
       isMounted = false;
     };
-  }, [role]);
+  }, [role, sessionVerified]);
 
   const isPremium = vendorPlan === "premium";
 
-  // Determine which role can access the current route
+  // Determine which role can access the current route.
   const requiredRole =
     path.startsWith("/dashboard/admin")
       ? "admin"
@@ -164,9 +206,11 @@ export function DashboardShell({
     ((requiredRole !== null && user.role !== requiredRole) ||
       (path === "/dashboard/orders" && role === "admin"));
 
-  // Redirect unauthorized users
+  // Redirect unauthorized users only after session verification.
   useEffect(() => {
-    if (!isPending && !session) {
+    if (isPending || !sessionVerified) return;
+
+    if (!session) {
       router.replace("/sign-in");
       return;
     }
@@ -181,6 +225,7 @@ export function DashboardShell({
     }
   }, [
     isPending,
+    sessionVerified,
     session,
     user,
     isUnauthorized,
@@ -188,7 +233,7 @@ export function DashboardShell({
     router,
   ]);
 
-  // Keep the active admin section synchronized with the URL hash
+  // Keep the active admin section synchronized with the URL hash.
   useEffect(() => {
     function updateActiveSection() {
       setActiveSection(window.location.hash);
@@ -205,7 +250,7 @@ export function DashboardShell({
     };
   }, []);
 
-  // Scroll to the selected section on initial load or browser history navigation
+  // Scroll to the selected section on initial load or browser history navigation.
   useEffect(() => {
     if (path !== "/dashboard/admin" || !activeSection) return;
 
@@ -221,7 +266,7 @@ export function DashboardShell({
     return () => window.cancelAnimationFrame(frame);
   }, [path, activeSection]);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside.
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -256,6 +301,8 @@ export function DashboardShell({
       }
 
       clearAuthTokenCache();
+      verificationRef.current = null;
+      setSessionVerified(false);
 
       toast.success("You have been signed out successfully.");
 
@@ -268,9 +315,10 @@ export function DashboardShell({
     }
   }
 
-  // Never render protected page content before role verification
+  // Never render protected content before the latest role is verified.
   if (
     isPending ||
+    !sessionVerified ||
     !session ||
     !user ||
     user.isBlocked ||
@@ -355,7 +403,7 @@ export function DashboardShell({
           })}
         </nav>
 
-        {/* Show Premium promotion only to Free vendors */}
+        {/* Show Premium promotion only to Free vendors. */}
         {role === "vendor" && vendorPlan !== null && !isPremium && (
           <div className="sidebar-premium">
             <Crown />
