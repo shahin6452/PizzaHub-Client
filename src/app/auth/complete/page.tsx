@@ -5,11 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
-import { api } from "@/lib/api";
+import { api, clearAuthTokenCache } from "@/lib/api";
 
 export default function AuthComplete() {
     const router = useRouter();
-    const { data: session, isPending } = authClient.useSession();
+    const {
+        data: session,
+        isPending,
+        refetch: refetchSession,
+    } = authClient.useSession();
 
     const [error, setError] = useState("");
     const processed = useRef(false);
@@ -39,7 +43,13 @@ export default function AuthComplete() {
                         body: JSON.stringify({ role: requestedRole }),
                     });
 
-                    toast.success("Account created successfully with Google!");
+                    // Clear cached JWT and refresh the Better Auth session.
+                    clearAuthTokenCache();
+                    await refetchSession();
+
+                    toast.success(
+                        `Account created successfully with Google!`
+                    );
                 } else {
                     toast.success("Welcome back! Google login successful.");
                 }
@@ -47,7 +57,9 @@ export default function AuthComplete() {
                 const currentUser = session?.user;
 
                 if (!currentUser) {
-                    throw new Error("Unable to retrieve your account information.");
+                    throw new Error(
+                        "Unable to retrieve your account information."
+                    );
                 }
 
                 const user = currentUser as typeof currentUser & {
@@ -80,7 +92,7 @@ export default function AuthComplete() {
         }
 
         completeAuth();
-    }, [isPending, session, router]);
+    }, [isPending, session, router, refetchSession]);
 
     return (
         <main className="container page-shell">

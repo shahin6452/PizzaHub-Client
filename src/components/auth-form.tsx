@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -14,12 +15,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
-import { api } from "@/lib/api";
-import { clearAuthTokenCache } from "@/lib/api";
+import { api, clearAuthTokenCache } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     const router = useRouter();
+
+    const { refetch: refetchSession } = authClient.useSession();
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -57,10 +59,15 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
                 // Clear any previous user's cached authentication token.
                 clearAuthTokenCache();
 
+                // Save the selected account role on the server.
                 await api("/api/users/choose-role", {
                     method: "POST",
                     body: JSON.stringify({ role }),
                 });
+
+                // Refresh Better Auth session to get the updated role.
+                clearAuthTokenCache();
+                await refetchSession();
 
                 if (profileFile) {
                     try {
@@ -92,6 +99,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
                 toast.success("Account created successfully!");
             } else {
                 clearAuthTokenCache();
+
                 const result = await authClient.signIn.email({
                     email,
                     password,
@@ -100,6 +108,9 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
                 if (result.error) {
                     throw new Error(result.error.message);
                 }
+
+                clearAuthTokenCache();
+                await refetchSession();
 
                 toast.success("Welcome back! Login successful.");
             }
