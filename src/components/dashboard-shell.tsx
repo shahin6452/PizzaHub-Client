@@ -82,6 +82,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
   const profileRef = useRef<HTMLDivElement>(null);
 
   const { data: session, isPending } = authClient.useSession();
@@ -155,6 +156,39 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     router,
   ]);
 
+  // Keep the active admin section synchronized with the URL hash
+  useEffect(() => {
+    function updateActiveSection() {
+      setActiveSection(window.location.hash);
+    }
+
+    updateActiveSection();
+
+    window.addEventListener("hashchange", updateActiveSection);
+    window.addEventListener("popstate", updateActiveSection);
+
+    return () => {
+      window.removeEventListener("hashchange", updateActiveSection);
+      window.removeEventListener("popstate", updateActiveSection);
+    };
+  }, []);
+
+  // Scroll to the selected section on initial load or browser history navigation
+  useEffect(() => {
+    if (path !== "/dashboard/admin" || !activeSection) return;
+
+    const sectionId = activeSection.slice(1);
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [path, activeSection]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -202,7 +236,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // IMPORTANT: Never render protected page content before role verification
+  // Never render protected page content before role verification
   if (
     isPending ||
     !session ||
@@ -244,31 +278,50 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <p className="sidebar-label">WORKSPACE</p>
 
         <nav>
-  {nav.map(({ href, label, icon: Icon }) => (
-    <Link
-      key={href}
-      href={href}
-      className={path === href.split("#")[0] ? "side-active" : ""}
-      onClick={(event) => {
-        const hash = href.split("#")[1];
+          {nav.map(({ href, label, icon: Icon }) => {
+            const [baseHref, hash] = href.split("#");
 
-        if (hash && path === href.split("#")[0]) {
-          event.preventDefault();
+            const isActive = hash
+              ? path === baseHref && activeSection === `#${hash}`
+              : path === href && !activeSection;
 
-          window.history.pushState(null, "", href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={isActive ? "side-active" : ""}
+                onClick={(event) => {
+                  if (path !== baseHref) return;
 
-          document.getElementById(hash)?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        }
-      }}
-    >
-      <Icon size={18} />
-      {label}
-    </Link>
-  ))}
-</nav>
+                  if (hash) {
+                    event.preventDefault();
+
+                    window.history.pushState(null, "", href);
+                    setActiveSection(`#${hash}`);
+
+                    document.getElementById(hash)?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  } else if (activeSection) {
+                    event.preventDefault();
+
+                    window.history.pushState(null, "", baseHref);
+                    setActiveSection("");
+
+                    window.scrollTo({
+                      top: 0,
+                      behavior: "smooth",
+                    });
+                  }
+                }}
+              >
+                <Icon size={18} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
 
         {role === "vendor" && (
           <div className="sidebar-premium">
@@ -323,6 +376,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <strong className="block text-sm font-semibold text-gray-900">
                       {accountName}
                     </strong>
+
                     <span className="text-xs capitalize text-gray-500">
                       {role} Account
                     </span>
