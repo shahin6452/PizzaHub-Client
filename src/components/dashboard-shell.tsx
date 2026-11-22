@@ -244,17 +244,31 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <p className="sidebar-label">WORKSPACE</p>
 
         <nav>
-          {nav.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={path === href ? "side-active" : ""}
-            >
-              <Icon size={18} />
-              {label}
-            </Link>
-          ))}
-        </nav>
+  {nav.map(({ href, label, icon: Icon }) => (
+    <Link
+      key={href}
+      href={href}
+      className={path === href.split("#")[0] ? "side-active" : ""}
+      onClick={(event) => {
+        const hash = href.split("#")[1];
+
+        if (hash && path === href.split("#")[0]) {
+          event.preventDefault();
+
+          window.history.pushState(null, "", href);
+
+          document.getElementById(hash)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      }}
+    >
+      <Icon size={18} />
+      {label}
+    </Link>
+  ))}
+</nav>
 
         {role === "vendor" && (
           <div className="sidebar-premium">
