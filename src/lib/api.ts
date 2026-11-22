@@ -14,6 +14,14 @@ type CachedToken = {
   expiresAt: number;
 };
 
+type ApiErrorPayload = {
+  message?: string;
+  errors?: Array<{
+    path?: string;
+    message?: string;
+  }>;
+};
+
 let cachedToken: CachedToken | null = null;
 let tokenPromise: Promise<string> | null = null;
 
@@ -30,7 +38,6 @@ function decodeTokenExpiry(token: string): number {
     // Use a safe fallback if decoding fails.
   }
 
-  // Current server JWT lifetime is 15 minutes.
   return Date.now() + 10 * 60 * 1000;
 }
 
@@ -40,12 +47,10 @@ export function clearAuthTokenCache() {
 }
 
 async function getAuthToken(): Promise<string> {
-  // Reuse a valid token, with a 60-second safety margin.
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
     return cachedToken.token;
   }
 
-  // Prevent multiple simultaneous token requests.
   if (tokenPromise) {
     return tokenPromise;
   }
@@ -79,7 +84,6 @@ async function getAuthToken(): Promise<string> {
 function isPublicRequest(path: string, method: string): boolean {
   const cleanPath = path.split("?")[0];
 
-  // Public menu listing and individual approved menu details.
   if (
     method === "GET" &&
     cleanPath.startsWith("/api/menu") &&
@@ -127,9 +131,19 @@ export async function api<T>(
     cache: "no-store",
   });
 
-  const payload = await response.json().catch(() => ({}));
+  const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload;
 
   if (!response.ok) {
+    const firstError = payload.errors?.[0];
+
+    if (firstError?.message) {
+      const field = firstError.path
+        ? `${firstError.path}: `
+        : "";
+
+      throw new Error(`${field}${firstError.message}`);
+    }
+
     throw new Error(
       payload.message || `Request failed (${response.status}).`
     );
