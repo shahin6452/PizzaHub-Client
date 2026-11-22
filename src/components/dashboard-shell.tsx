@@ -108,31 +108,48 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             ? user?.businessName || user?.name
             : user?.name;
 
+    // Determine which role can access the current route
+    const requiredRole =
+        path.startsWith("/dashboard/admin")
+            ? "admin"
+            : path.startsWith("/dashboard/vendor") ||
+                path.startsWith("/dashboard/menu-items")
+                ? "vendor"
+                : path === "/dashboard/customer" ||
+                    path.startsWith("/dashboard/customer/")
+                    ? "customer"
+                    : null;
+
+    const isUnauthorized =
+        !!user &&
+        (
+            (requiredRole !== null && user.role !== requiredRole) ||
+            (path === "/dashboard/orders" && role === "admin")
+        );
+
+    // Redirect unauthorized users
     useEffect(() => {
-        if (!isPending && !session) router.replace("/sign-in");
-
-        if (user?.isBlocked) router.replace("/blocked");
-
-        if (user) {
-            const required =
-                path === "/dashboard/admin"
-                    ? "admin"
-                    : path === "/dashboard/vendor" || path === "/dashboard/menu-items"
-                        ? "vendor"
-                        : path === "/dashboard/customer" ||
-                            path.startsWith("/dashboard/customer/")
-                            ? "customer"
-                            : null;
-
-            if (required && user.role !== required) {
-                router.replace(`/dashboard/${role}`);
-            }
-
-            if (path === "/dashboard/orders" && role === "admin") {
-                router.replace("/dashboard/admin");
-            }
+        if (!isPending && !session) {
+            router.replace("/sign-in");
+            return;
         }
-    }, [isPending, session, user, router, path, role]);
+
+        if (user?.isBlocked) {
+            router.replace("/blocked");
+            return;
+        }
+
+        if (isUnauthorized) {
+            router.replace(dashboardHref);
+        }
+    }, [
+        isPending,
+        session,
+        user,
+        isUnauthorized,
+        dashboardHref,
+        router,
+    ]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -164,7 +181,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         router.replace("/");
     }
 
-    if (isPending || !session) {
+    // IMPORTANT: Never render protected page content before role verification
+    if (
+        isPending ||
+        !session ||
+        !user ||
+        user.isBlocked ||
+        isUnauthorized
+    ) {
         return (
             <div className="dashboard-loading">
                 <div className="loader" />
@@ -252,8 +276,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
                                 <ChevronDown
                                     size={16}
-                                    className={`transition-transform duration-200 ${profileOpen ? "rotate-180" : ""
-                                        }`}
+                                    className={`transition-transform duration-200 ${
+                                        profileOpen ? "rotate-180" : ""
+                                    }`}
                                 />
                             </button>
 
