@@ -24,6 +24,7 @@ type ApiErrorPayload = {
 
 let cachedToken: CachedToken | null = null;
 let tokenPromise: Promise<string> | null = null;
+let tokenGeneration = 0;
 
 function decodeTokenExpiry(token: string): number {
   try {
@@ -42,6 +43,7 @@ function decodeTokenExpiry(token: string): number {
 }
 
 export function clearAuthTokenCache() {
+  tokenGeneration++;
   cachedToken = null;
   tokenPromise = null;
 }
@@ -55,30 +57,38 @@ async function getAuthToken(): Promise<string> {
     return tokenPromise;
   }
 
-  tokenPromise = (async () => {
-    try {
-      const result = await authClient.token();
+  const currentGeneration = tokenGeneration;
 
-      if (result.error || !result.data?.token) {
-        throw new Error(
-          result.error?.message || "Authentication token is unavailable."
-        );
-      }
+  const request = (async () => {
+    const result = await authClient.token();
 
-      const token = result.data.token;
+    if (result.error || !result.data?.token) {
+      throw new Error(
+        result.error?.message || "Authentication token is unavailable."
+      );
+    }
 
+    const token = result.data.token;
+
+    if (currentGeneration === tokenGeneration) {
       cachedToken = {
         token,
         expiresAt: decodeTokenExpiry(token),
       };
-
-      return token;
-    } finally {
-      tokenPromise = null;
     }
+
+    return token;
   })();
 
-  return tokenPromise;
+  tokenPromise = request;
+
+  try {
+    return await request;
+  } finally {
+    if (tokenPromise === request) {
+      tokenPromise = null;
+    }
+  }
 }
 
 function isPublicRequest(path: string, method: string): boolean {
