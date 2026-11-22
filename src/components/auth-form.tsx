@@ -54,6 +54,9 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
                     throw new Error(result.error.message);
                 }
 
+                // Clear any previous user's cached authentication token.
+                clearAuthTokenCache();
+
                 await api("/api/users/choose-role", {
                     method: "POST",
                     body: JSON.stringify({ role }),
