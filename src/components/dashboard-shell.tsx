@@ -18,6 +18,7 @@ import {
     Users,
     Heart,
 } from "lucide-react";
+import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 
 // Profile image with automatic fallback
@@ -177,8 +178,23 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
     async function signout() {
         setProfileOpen(false);
-        await authClient.signOut();
-        router.replace("/");
+
+        try {
+            const result = await authClient.signOut();
+
+            if (result.error) {
+                throw new Error(result.error.message);
+            }
+
+            toast.success("You have been signed out successfully.");
+
+            router.replace("/");
+            router.refresh();
+        } catch (err) {
+            toast.error(
+                err instanceof Error ? err.message : "Could not sign out."
+            );
+        }
     }
 
     // IMPORTANT: Never render protected page content before role verification
