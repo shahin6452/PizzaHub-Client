@@ -20,6 +20,38 @@ import {
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
+// Profile image with automatic fallback
+function ProfileAvatar({
+    src,
+    name,
+    className,
+}: {
+    src?: string | null;
+    name?: string;
+    className: string;
+}) {
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [src]);
+
+    return (
+        <span className={className}>
+            {src && !imageError ? (
+                <img
+                    src={src}
+                    alt={`${name || "User"} profile`}
+                    referrerPolicy="no-referrer"
+                    onError={() => setImageError(true)}
+                />
+            ) : (
+                name?.trim()?.slice(0, 1).toUpperCase() || "P"
+            )}
+        </span>
+    );
+}
+
 const menus = {
     vendor: [
         { href: "/dashboard/vendor", label: "Overview", icon: LayoutDashboard },
@@ -152,13 +184,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 </Link>
 
                 <div className="sidebar-profile">
-                    <div className="profile-avatar">
-                        {user?.image ? (
-                            <img src={user.image} alt="Profile" />
-                        ) : (
-                            user?.name?.slice(0, 1) || "P"
-                        )}
-                    </div>
+                    <ProfileAvatar
+                        src={user?.image}
+                        name={user?.name}
+                        className="profile-avatar"
+                    />
 
                     <div>
                         <strong>{accountName}</strong>
@@ -212,13 +242,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                                 aria-haspopup="true"
                                 className="topbar-user flex items-center gap-2 cursor-pointer"
                             >
-                                <span className="avatar">
-                                    {user?.image ? (
-                                        <img src={user.image} alt="Profile" />
-                                    ) : (
-                                        user?.name?.slice(0, 1) || "P"
-                                    )}
-                                </span>
+                                <ProfileAvatar
+                                    src={user?.image}
+                                    name={user?.name}
+                                    className="avatar"
+                                />
 
                                 <span>{accountName}</span>
 
