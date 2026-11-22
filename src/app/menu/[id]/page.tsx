@@ -31,16 +31,52 @@ export default function MenuDetails() {
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    api<{ item: Pizza }>(`/api/menu/${id}`).then(r => { setItem(r.item); setActiveImage(0); }).catch(e => { setItem(undefined); setError(e instanceof Error ? e.message : "Could not load this menu item."); }).finally(() => setLoading(false));
+    api<{ item: Pizza }>(`/api/menu/${id}`)
+      .then(r => {
+        setItem(r.item);
+        setActiveImage(0);
+      })
+      .catch(e => {
+        setItem(undefined);
+        setError(e instanceof Error ? e.message : "Could not load this menu item.");
+      })
+      .finally(() => setLoading(false));
   }, [id, session]);
 
   async function order(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setError("");
+    e.preventDefault();
+    setError("");
+
+    const trimmedAddress = address.trim();
+
+    if (!trimmedAddress) {
+      setError("Please enter your delivery address.");
+      return;
+    }
+
+    if (trimmedAddress.length > 500) {
+      setError("Delivery address cannot exceed 500 characters.");
+      return;
+    }
+
+    setBusy(true);
+
     try {
-      await api("/api/orders", { method: "POST", body: JSON.stringify({ itemId: id, deliveryDate: date, deliveryAddress: address, message }) });
+      await api("/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          itemId: id,
+          deliveryDate: date,
+          deliveryAddress: trimmedAddress,
+          message: message.trim(),
+        }),
+      });
       router.push("/dashboard/orders?created=1");
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not place order"); }
-    finally { setBusy(false); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not place order");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (authPending || !session) return <main className="container page-shell"><div className="loading-block">Checking your account…</div></main>;
@@ -65,10 +101,11 @@ export default function MenuDetails() {
         <div className="detail-meta"><span><Star fill="currentColor"/>{item.rating?.toFixed(1) || "New"} ({item.reviewCount || 0} reviews)</span><span><MapPin/>{item.location}</span></div>
         <strong className="detail-price">{money(item.price)}</strong><p>{item.description}</p>
         <div className="vendor-panel"><span className="vendor-mark">🍕</span><div><strong>{item.vendorInfo?.name || item.vendorName || "Local pizza kitchen"}</strong><small>Restaurant partner · {item.isPremiumVendor ? "Premium vendor" : "Community vendor"}</small>{item.vendorInfo?.description&&<small>{item.vendorInfo.description}</small>}{item.vendorInfo?.location&&<small><MapPin size={12} style={{display:"inline"}}/> {item.vendorInfo.location}</small>}{item.vendorInfo?.phone&&<small>{item.vendorInfo.phone}</small>}</div></div>
-        {canOrder ? <form className="order-form" onSubmit={order}><h3>Plan your delivery</h3>
+        {canOrder ? <form className="order-form" onSubmit={order}>
+          <h3>Plan your delivery</h3>
           <label>Delivery date<input required type="date" min={new Date().toISOString().slice(0,10)} value={date} onChange={e=>setDate(e.target.value)}/></label>
-          <label>Delivery address<textarea required rows={2} value={address} onChange={e=>setAddress(e.target.value)} placeholder="House, road, area, city"/></label>
-          <label>Special instructions <span className="muted">(optional)</span><textarea rows={2} value={message} onChange={e=>setMessage(e.target.value)} placeholder="Anything the kitchen should know?"/></label>
+          <label>Delivery address<textarea required rows={2} maxLength={500} value={address} onChange={e=>setAddress(e.target.value)} placeholder="House, road, area, city"/></label>
+          <label>Special instructions <span className="muted">(optional)</span><textarea rows={2} maxLength={1000} value={message} onChange={e=>setMessage(e.target.value)} placeholder="Anything the kitchen should know?"/></label>
           {error && <p className="form-error">{error}</p>}
           <button className="btn btn-primary btn-full" disabled={busy}><ShoppingBag size={17}/>{busy ? "Placing order…" : "Place order · " + money(item.price)}</button>
           <small className="form-hint">No online payment is required for pizza orders in this assignment.</small>
