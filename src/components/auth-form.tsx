@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
+import { clearAuthTokenCache } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
@@ -87,6 +88,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 
                 toast.success("Account created successfully!");
             } else {
+                clearAuthTokenCache();
                 const result = await authClient.signIn.email({
                     email,
                     password,

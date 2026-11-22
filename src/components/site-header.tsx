@@ -20,6 +20,7 @@ import {
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
+import { clearAuthTokenCache } from "@/lib/api";
 
 export function SiteHeader() {
   const path = usePathname();
@@ -48,6 +49,8 @@ export function SiteHeader() {
       if (result.error) {
         throw new Error(result.error.message);
       }
+
+      clearAuthTokenCache();
 
       setProfileOpen(false);
       setOpen(false);
@@ -97,6 +100,7 @@ export function SiteHeader() {
               <Link href="/sign-in" onClick={() => setOpen(false)}>
                 Sign in
               </Link>
+
               <Link
                 className="btn btn-primary nav-cta"
                 href="/sign-up"
@@ -120,6 +124,7 @@ export function SiteHeader() {
                     <UserRound size={16} />
                   )}
                 </span>
+
                 <span>{user.name}</span>
                 <ChevronDown size={14} />
               </button>
