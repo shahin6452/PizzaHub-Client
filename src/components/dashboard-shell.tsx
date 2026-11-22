@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
-import { clearAuthTokenCache } from "@/lib/api";
+import { api, clearAuthTokenCache } from "@/lib/api";
 
 // Profile image with automatic fallback
 function ProfileAvatar({
@@ -77,12 +77,18 @@ const menus = {
   ],
 };
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const path = usePathname();
   const router = useRouter();
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
+  const [vendorPlan, setVendorPlan] = useState<string | null>(null);
+
   const profileRef = useRef<HTMLDivElement>(null);
 
   const { data: session, isPending } = authClient.useSession();
@@ -113,6 +119,34 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       ? user?.businessName || user?.name
       : user?.name;
 
+  // Fetch vendor plan to control the Premium promotional card
+  useEffect(() => {
+    if (role !== "vendor") {
+      setVendorPlan(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    api<{ stats: { plan: string } }>("/api/dashboard/vendor")
+      .then((response) => {
+        if (isMounted) {
+          setVendorPlan(response.stats?.plan?.toLowerCase() || "free");
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setVendorPlan("free");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [role]);
+
+  const isPremium = vendorPlan === "premium";
+
   // Determine which role can access the current route
   const requiredRole =
     path.startsWith("/dashboard/admin")
@@ -127,10 +161,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const isUnauthorized =
     !!user &&
-    (
-      (requiredRole !== null && user.role !== requiredRole) ||
-      (path === "/dashboard/orders" && role === "admin")
-    );
+    ((requiredRole !== null && user.role !== requiredRole) ||
+      (path === "/dashboard/orders" && role === "admin"));
 
   // Redirect unauthorized users
   useEffect(() => {
@@ -323,7 +355,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {role === "vendor" && (
+        {/* Show Premium promotion only to Free vendors */}
+        {role === "vendor" && vendorPlan !== null && !isPremium && (
           <div className="sidebar-premium">
             <Crown />
             <strong>Unlock Premium</strong>
