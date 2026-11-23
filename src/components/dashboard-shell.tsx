@@ -357,7 +357,7 @@ export function DashboardShell({
 
         <p className="sidebar-label">WORKSPACE</p>
 
-        <nav>
+        <nav className={`dashboard-nav dashboard-nav-${role}`} aria-label="Dashboard navigation">
           {nav.map(({ href, label, icon: Icon }) => {
             const [baseHref, hash] = href.split("#");
 
